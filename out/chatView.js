@@ -1,66 +1,99 @@
-import * as vscode from 'vscode';
-import { buildAgentPrompt, ChatMessage } from './deepseek';
-import { BrowserChat } from './browserChat';
-import { buildActionsFromAnswer, approveAction, applyAction, ProposedAction } from './executor';
-
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ChatViewProvider = void 0;
+const vscode = __importStar(require("vscode"));
+const deepseek_1 = require("./deepseek");
+const browserChat_1 = require("./browserChat");
+const executor_1 = require("./executor");
 let actionSeq = 0;
-
-export class ChatViewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'deepseekAgent.chatView';
-    private view?: vscode.WebviewView;
-    private history: ChatMessage[] = [];
-    private pendingActions = new Map<number, ProposedAction>();
-    private busy = false;
-    private lastPacket = '';
-    private readonly browser: BrowserChat;
-
-    constructor(private readonly ctx: vscode.ExtensionContext) {
-        this.browser = new BrowserChat(ctx);
-        const saved = this.ctx.workspaceState.get<ChatMessage[]>('chatHistory', []);
+class ChatViewProvider {
+    constructor(ctx) {
+        this.ctx = ctx;
+        this.history = [];
+        this.pendingActions = new Map();
+        this.busy = false;
+        this.lastPacket = '';
+        this.browser = new browserChat_1.BrowserChat(ctx);
+        const saved = this.ctx.workspaceState.get('chatHistory', []);
         this.history = Array.isArray(saved) ? saved.slice(-30) : [];
     }
-
-    resolveWebviewView(webviewView: vscode.WebviewView) {
+    resolveWebviewView(webviewView) {
         this.view = webviewView;
         webviewView.webview.options = { enableScripts: true };
         webviewView.webview.html = this.getHtml();
-
-        webviewView.webview.onDidReceiveMessage(async msg => {
+        webviewView.webview.onDidReceiveMessage(async (msg) => {
             try {
-                if (msg.command === 'send') await this.handleUserMessage(msg.text);
-                else if (msg.command === 'runAction') await this.handleRunAction(msg.id);
-                else if (msg.command === 'openChat') await this.browser.open();
+                if (msg.command === 'send')
+                    await this.handleUserMessage(msg.text);
+                else if (msg.command === 'runAction')
+                    await this.handleRunAction(msg.id);
+                else if (msg.command === 'openChat')
+                    await this.browser.open();
                 else if (msg.command === 'copyPacket') {
                     await vscode.env.clipboard.writeText(this.lastPacket);
                     this.post({ command: 'hint', text: '📋 Prompt do agente copiado. Cole (Ctrl+V) no chat.deepseek.com e envie.' });
                 }
-                else if (msg.command === 'installScript') await this.installUserscript();
+                else if (msg.command === 'installScript')
+                    await this.installUserscript();
                 else if (msg.command === 'clear') {
                     this.history = [];
                     await this.persist();
                     this.post({ command: 'clear' });
                 }
-            } catch (e: any) {
+            }
+            catch (e) {
                 this.postAssistant(`⚠️ ${e?.message ?? String(e)}`);
-            } finally {
+            }
+            finally {
                 this.busy = false;
                 this.post({ command: 'busy', value: false });
             }
         });
-
         for (const m of this.history) {
-            if (m.role === 'user') this.post({ command: 'addUser', text: m.content });
-            if (m.role === 'assistant') this.postAssistant(m.content);
+            if (m.role === 'user')
+                this.post({ command: 'addUser', text: m.content });
+            if (m.role === 'assistant')
+                this.postAssistant(m.content);
         }
     }
-
-    private post(msg: any) { this.view?.webview.postMessage(msg); }
-
-    private async persist() {
+    post(msg) { this.view?.webview.postMessage(msg); }
+    async persist() {
         await this.ctx.workspaceState.update('chatHistory', this.history.slice(-50));
     }
-
-    private postAssistant(text: string, actions: ProposedAction[] = []) {
+    postAssistant(text, actions = []) {
         const uiActions = actions.map(a => {
             const id = ++actionSeq;
             this.pendingActions.set(id, a);
@@ -68,67 +101,69 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         });
         this.post({ command: 'addAssistant', text, actions: uiActions });
     }
-
     /** Mostra status temporário "digitando…" com texto dinâmico. */
-    private setStatus(text: string) { this.post({ command: 'status', text }); }
-
-    private async handleUserMessage(text: string) {
-        if (!text || !text.trim() || this.busy) return;
+    setStatus(text) { this.post({ command: 'status', text }); }
+    async handleUserMessage(text) {
+        if (!text || !text.trim() || this.busy)
+            return;
         this.busy = true;
         this.post({ command: 'busy', value: true });
         this.post({ command: 'addUser', text });
         this.history.push({ role: 'user', content: text.trim() });
-
-        const agentPrompt = buildAgentPrompt(text.trim(), this.history);
+        const agentPrompt = (0, deepseek_1.buildAgentPrompt)(text.trim(), this.history);
         this.lastPacket = agentPrompt;
-
         try {
             this.setStatus('Abrindo chat.deepseek.com na sua conta…');
             const answer = await this.browser.ask(agentPrompt, s => this.setStatus(s));
             this.history.push({ role: 'assistant', content: answer });
             await this.persist();
-            const actions = buildActionsFromAnswer(answer);
+            const actions = (0, executor_1.buildActionsFromAnswer)(answer);
             this.postAssistant(answer, actions);
             if (actions.length > 0) {
                 this.post({ command: 'hint', text: `💡 Detectei ${actions.length} ação(ões). Clique em "Executar"/"Criar" para aplicar (você aprova antes).` });
             }
-        } catch (e: any) {
+        }
+        catch (e) {
             this.history.push({ role: 'assistant', content: `⚠️ ${e?.message ?? e}` });
             await this.persist();
             this.postAssistant(`⚠️ ${e?.message ?? e}\n\nDicas:\n• Veja se a aba do chat está logada na sua conta.\n• Instale o userscript bridge (botão 📜) para envio/captura automáticos.\n• Ou use 🌐 → cole o prompt → envie → copie a resposta: eu capturo pelo clipboard.`);
-        } finally {
+        }
+        finally {
             this.busy = false;
             this.post({ command: 'busy', value: false });
         }
     }
-
-    private async handleRunAction(id: number) {
+    async handleRunAction(id) {
         const action = this.pendingActions.get(id);
-        if (!action) return;
-        const ok = await approveAction(action);
-        if (!ok) { this.post({ command: 'actionStatus', id, status: 'cancelado ✋' }); return; }
+        if (!action)
+            return;
+        const ok = await (0, executor_1.approveAction)(action);
+        if (!ok) {
+            this.post({ command: 'actionStatus', id, status: 'cancelado ✋' });
+            return;
+        }
         try {
-            const result = await applyAction(action);
+            const result = await (0, executor_1.applyAction)(action);
             this.post({ command: 'actionStatus', id, status: result });
-        } catch (e: any) {
+        }
+        catch (e) {
             this.post({ command: 'actionStatus', id, status: `erro: ${e.message}` });
         }
     }
-
     /** Copia o conteúdo do userscript para o clipboard e abre a página de instalação. */
-    private async installUserscript() {
+    async installUserscript() {
         try {
             const uri = vscode.Uri.joinPath(this.ctx.extensionUri, 'assets', 'deepseek-agent.user.js');
             const bytes = await vscode.workspace.fs.readFile(uri);
             await vscode.env.clipboard.writeText(Buffer.from(bytes).toString('utf8'));
             await vscode.env.openExternal(vscode.Uri.parse('https://chat.deepseek.com/'));
             this.post({ command: 'hint', text: '📜 Userscript copiado! No navegador: Tampermonkey → Criar novo script → cole → Salvar. Depois volte ao chat e mande a mensagem de novo.' });
-        } catch (e: any) {
+        }
+        catch (e) {
             this.post({ command: 'hint', text: `⚠️ Não consegui abrir o userscript (${e.message}). Ele está no arquivo assets/deepseek-agent.user.js da extensão.` });
         }
     }
-
-    private getHtml(): string {
+    getHtml() {
         return `<!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -249,3 +284,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 </html>`;
     }
 }
+exports.ChatViewProvider = ChatViewProvider;
+ChatViewProvider.viewType = 'deepseekAgent.chatView';
+//# sourceMappingURL=chatView.js.map

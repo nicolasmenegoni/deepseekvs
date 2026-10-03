@@ -1,12 +1,8 @@
-import * as vscode from 'vscode';
-
-export interface ChatMessage {
-    role: 'system' | 'user' | 'assistant';
-    content: string;
-}
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.buildAgentPrompt = buildAgentPrompt;
 /** Mensagem final que vai para o chat.deepseek.com (via aba logada na sua conta). */
-export function buildAgentPrompt(userText: string, history: ChatMessage[]): string {
+function buildAgentPrompt(userText, history) {
     const os = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux';
     const prev = history
         .filter(m => m.role !== 'system')
@@ -29,7 +25,7 @@ export function buildAgentPrompt(userText: string, history: ChatMessage[]): stri
         'FORMATO DA RESPOSTA (OBRIGATÓRIO):',
         'Responda APENAS um objeto JSON válido — sem markdown, sem cercas de código, sem nenhum texto fora do JSON — neste esquema:',
         '{"explicacao":"plano e explicações em markdown pt-br","comandos":["cmd1","cmd2"],"arquivos":[{"nome":"caminho/arquivo.ext","conteudo":"conteúdo completo"}]}',
-        '"comandos" na ordem exata de execução; use [] quando não houver comandos ou arquivos.'
-        ,
+        '"comandos" na ordem exata de execução; use [] quando não houver comandos ou arquivos.',
     ].filter(l => l !== null).join('\n').replace(/\n{3,}/g, '\n\n');
 }
+//# sourceMappingURL=deepseek.js.map
