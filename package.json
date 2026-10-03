@@ -1,0 +1,37 @@
+{
+  "name": "deepseek-agent-chat",
+  "displayName": "DeepSeek Agent Chat (sua conta, sem API key)",
+  "description": "Agente no VSCode que conversa direto no chat.deepseek.com usando a sua conta (sem chave de API), captura as respostas e executa os comandos/arquivos sugeridos — com aprovação.",
+  "version": "0.2.0",
+  "publisher": "local-dev",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other", "AI"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "deepseekAgent", "title": "DeepSeek Agent", "icon": "media/icon.svg" }
+      ]
+    },
+    "views": {
+      "deepseekAgent": [
+        { "type": "webview", "id": "deepseekAgent.chatView", "name": "Chat" }
+      ]
+    },
+    "commands": [
+      { "command": "deepseekAgent.openChat", "title": "DeepSeek Agent: Abrir Chat" }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "npx --yes @vscode/vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
