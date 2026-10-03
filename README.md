@@ -1,0 +1,2 @@
+# deepseekvs
+VSCode Extension Creation
