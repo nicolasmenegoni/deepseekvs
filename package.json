@@ -1,0 +1,96 @@
+{
+  "name": "deepseek-agent-chat",
+  "displayName": "DeepSeek Agent Chat",
+  "description": "Chat de agente de IA no VSCode que usa o DeepSeek (via API ou chat.deepseek.com) para planejar e executar tarefas no seu projeto.",
+  "version": "0.1.0",
+  "publisher": "local-dev",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "deepseekAgent",
+          "title": "DeepSeek Agent",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "deepseekAgent": [
+        {
+          "type": "webview",
+          "id": "deepseekAgent.chatView",
+          "name": "Agente IA"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "deepseekAgent.openChat",
+        "title": "DeepSeek Agent: Abrir Chat"
+      },
+      {
+        "command": "deepseekAgent.configureKey",
+        "title": "DeepSeek Agent: Configurar API Key"
+      },
+      {
+        "command": "deepseekAgent.setCookie",
+        "title": "DeepSeek Agent: Definir Cookie do chat.deepseek.com"
+      }
+    ],
+    "configuration": {
+      "title": "DeepSeek Agent",
+      "properties": {
+        "deepseekAgent.mode": {
+          "type": "string",
+          "enum": ["api", "web"],
+          "default": "api",
+          "enumDescriptions": [
+            "Usa a API oficial platform.deepseek.com (mais confiável, precisa de API key)",
+            "Usa o chat.deepseek.com via browser embutido (usa sua conta login)"
+          ],
+          "description": "Como o agente deve falar com o DeepSeek."
+        },
+        "deepseekAgent.model": {
+          "type": "string",
+          "default": "deepseek-chat",
+          "description": "Modelo usado no modo API (ex.: deepseek-chat)."
+        },
+        "deepseekAgent.apiBaseUrl": {
+          "type": "string",
+          "default": "https://api.deepseek.com",
+          "description": "URL base da API do DeepSeek."
+        },
+        "deepseekAgent.autoApproveCommands": {
+          "type": "boolean",
+          "default": false,
+          "description": "Executar comandos sugeridos pelo DeepSeek SEM pedir aprovação (PERIGOSO: mantenha desligado)."
+        },
+        "deepseekAgent.maxAutoSteps": {
+          "type": "number",
+          "default": 10,
+          "description": "Máximo de rodadas de conversa em uma mesma tarefa do agente."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}

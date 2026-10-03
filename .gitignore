@@ -1,5 +1,8 @@
-node_modules/
-.next/
+# Compiled and build artifacts
+out/
+
+# Dependencies
+node_modules/.next/
 dist/
 build/
 *.log
